@@ -85,7 +85,7 @@ def syncJiraToAsana(jiraTask):
             updateBody['data']['completed'] = True
         requests.put(config.asanaTasksURL + asanaJiraMap[jiraTask['key']], json=updateBody , headers=config.asanaHeaders, proxies=config.proxies)
         jiraComment = requests.get(config.jiraIssueURL+jiraTask['key']+'/comment', headers=config.jiraHeaders).json()
-        jiraCommentCount = 0
+        jiraCommentCount, asanaCommentCount = 0, 0
         for c in jiraComment['comments']:
             if c['author']['key'] == 'x269332':
                 jiraCommentCount += 1
@@ -93,11 +93,23 @@ def syncJiraToAsana(jiraTask):
 
         for ac in asanaComment['data']:
             if ac['resource_subtype'] == 'comment_added':
-                if jiraCommentCount == 0 and not updateBody['data'].get('completed', False):
-                    asanaJiraComment = 'Comment from '+ac['created_by']['name']+ '  ' + ac['created_at'] + ':\n' + ac['text']
+                if 'Comment from JIRA' in ac['text']:
+                    asanaCommentCount += 1
+                if jiraCommentCount == 0 and not updateBody['data'].get('completed', False) and "Comment from JIRA" not in ac['text']:
+                    asanaJiraComment = 'Comment from Asana '+ac['created_by']['name']+ '  ' + ac['created_at'] + ':\n' + ac['text']
+                    print('adding jira comment...')
                     requests.post(config.jiraIssueURL+jiraTask['key']+'/comment', json={'body': asanaJiraComment} ,headers=config.jiraHeaders).json()
                 else:
                     jiraCommentCount -= 1
+        for i in range(asanaCommentCount, len(jiraComment['comments'])):
+            c = jiraComment['comments'][i]
+            if 'Comment from Asana' not in c['body']:
+                jiraAsanaComment = {
+                    'data': {
+                        'text': 'Comment from JIRA '+ c['author']['displayName']+' '+ c['created'] + ':\n' + c['body']
+                    }
+                }
+                requests.post(config.asanaTasksURL + asanaJiraMap[jiraTask['key']] +'/stories',json=jiraAsanaComment, headers=config.asanaHeaders, proxies=config.proxies)
         del asanaJiraMap[jiraTask['key']]
     else:
         print('creating...', jiraTask['fields']['summary'])
