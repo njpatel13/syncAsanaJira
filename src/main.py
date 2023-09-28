@@ -95,15 +95,17 @@ def syncJiraToAsana(jiraTask):
             if ac['resource_subtype'] == 'comment_added':
                 if 'Comment from JIRA' in ac['text']:
                     asanaCommentCount += 1
-                if jiraCommentCount == 0 and not updateBody['data'].get('completed', False) and "Comment from JIRA" not in ac['text']:
-                    asanaJiraComment = 'Comment from Asana '+ac['created_by']['name']+ '  ' + ac['created_at'] + ':\n' + ac['text']
-                    print('adding jira comment...')
-                    requests.post(config.jiraIssueURL+jiraTask['key']+'/comment', json={'body': asanaJiraComment} ,headers=config.jiraHeaders).json()
-                else:
-                    jiraCommentCount -= 1
-        for i in range(asanaCommentCount, len(jiraComment['comments'])):
-            c = jiraComment['comments'][i]
+                if "Comment from JIRA" not in ac['text']:
+                    if jiraCommentCount == 0 and not updateBody['data'].get('completed', False):
+                            asanaJiraComment = 'Comment from Asana '+ac['created_by']['name']+ '  ' + ac['created_at'] + ':\n' + ac['text']
+                            print('adding jira comment...')
+                            requests.post(config.jiraIssueURL+jiraTask['key']+'/comment', json={'body': asanaJiraComment} ,headers=config.jiraHeaders).json()
+                    else:
+                        jiraCommentCount -= 1
+        for c in jiraComment['comments']:
             if 'Comment from Asana' not in c['body']:
+                asanaCommentCount -= 1
+            if asanaCommentCount < 0 and 'Comment from Asana' not in c['body']:
                 jiraAsanaComment = {
                     'data': {
                         'text': 'Comment from JIRA '+ c['author']['displayName']+' '+ c['created'] + ':\n' + c['body']
