@@ -30,7 +30,7 @@ def queryAsanaBoard(r):
 # Add FBL MOB VOICE <> Tasks to Telus Jira Tracker board
 def fblAsanaTasks(fbl):
     for task in fbl['data']:
-        if 'FBL MOB Voice <>' in task['name'] and task['gid'] not in asanaTasks and not task['completed']:
+        if ('FBL MOB Voice <>' in task['name'] or 'FBL FFH Voice <>' in task['name']) and task['gid'] not in asanaTasks and not task['completed']:
             print('adding '+ task['gid'] +' to Telus Jira Tracker')
             requests.post(config.asanaTasksURL + task['gid'] + '/addProject', json={'data': {'project': '1204461209029132'}}, headers=config.asanaHeaders, proxies=config.proxies)
             asanaTasks.append(task['gid'])
@@ -149,6 +149,8 @@ def syncAsanaJira(request):
             config.jiraHeaders['Authorization'] += request_args['jiraToken']
             preprocessing()
             jiraTasks = requests.get(config.jiraSearchURL + last_month_date.strftime('%Y/%m/%d') +'" ORDER BY updated DESC', headers=config.jiraHeaders).json()
+            # jiraTasks = {'issues': []}
+            # jiraTasks = requests.get('https://jira.tsl.telus.com/rest/api/2/search?jql=key = "ACXUX-16276" or key = "ACXUX-16278"', headers=config.jiraHeaders).json()
             for task in jiraTasks['issues']:
                 syncJiraToAsana(task)
             deleteOldTasks()
